@@ -44,7 +44,7 @@ func (c DiscardCommand) Call(
 }
 
 func (c DiscardCommand) Usage(player string, context interface{}) string {
-	return "{{b}}discard # (good){{_b}} to discard goods down to the required 6, eg. {{b}}discard 2 wood{{_b}}"
+	return "{{b}}discard # (good){{/b}} to discard goods down to the required 6, eg. {{b}}discard 2 wood{{/b}}"
 }
 
 func (g *Game) CanDiscard(player int) bool {

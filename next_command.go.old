@@ -24,7 +24,7 @@ func (c NextCommand) Call(
 }
 
 func (c NextCommand) Usage(player string, context interface{}) string {
-	return "{{b}}next{{_b}} to continue to the next phase of your turn"
+	return "{{b}}next{{/b}} to continue to the next phase of your turn"
 }
 
 func (g *Game) CanNext(player int) bool {

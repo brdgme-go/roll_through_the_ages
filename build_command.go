@@ -3,68 +3,28 @@ package roll_through_the_ages
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 
-	"github.com/Miniand/brdg.me/command"
-	"github.com/Miniand/brdg.me/game/helper"
-	"github.com/Miniand/brdg.me/game/log"
+	"github.com/brdgme-go/brdgme"
 )
 
-type BuildCommand struct{}
-
-func (c BuildCommand) Name() string { return "build" }
-
-func (c BuildCommand) Call(
-	player string,
-	context interface{},
-	input *command.Reader,
-) (string, error) {
-	g := context.(*Game)
-	pNum, err := g.PlayerNum(player)
-	if err != nil {
-		return "", err
+func (g *Game) BuildCommand(
+	player int,
+	args BuildCommand,
+	remaining string,
+) (brdgme.CommandResponse, error) {
+	switch args.Target.Type {
+	case BuildTypeCity:
+		return g.BuildCityCommand(player, args.Amount, remaining)
+	case BuildTypeShip:
+		return g.BuildShipCommand(player, args.Amount, remaining)
+	case BuildTypeMonument:
+		return g.BuildMonumentCommand(player, args.Target.Monument, args.Amount, remaining)
 	}
-	args, err := input.ReadLineArgs()
-	if err != nil || len(args) < 2 {
-		return "", errors.New(
-			"you must pass an amount to build and the name of a thing to build")
-	}
-
-	amount, err := strconv.Atoi(args[0])
-	if err != nil {
-		return "", errors.New("you must specify an amount")
-	}
-
-	stringMap := map[int]string{
-		-1: "city",
-	}
-	if g.Boards[pNum].Developments[DevelopmentShipping] {
-		stringMap[-2] = "ship"
-	}
-	for _, m := range Monuments {
-		stringMap[m] = MonumentValues[m].Name
-	}
-	thing, err := helper.MatchStringInStringMap(
-		strings.Join(args[1:], " "),
-		stringMap,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	switch thing {
-	case -1:
-		return "", g.BuildCity(pNum, amount)
-	case -2:
-		return "", g.BuildShip(pNum, amount)
-	default:
-		return "", g.BuildMonument(pNum, thing, amount)
-	}
+	panic("unreachable")
 }
 
 func (c BuildCommand) Usage(player string, context interface{}) string {
-	return "{{b}}build # (thing){{_b}} to build monuments or cities using workers, or ships using cloth and wood. Eg. {{b}}build 2 great{{_b}} or {{b}}build 3 city{{_b}} or {{b}}build 1 ship{{_b}}"
+	return "{{b}}build # (thing){{/b}} to build monuments or cities using workers, or ships using cloth and wood. Eg. {{b}}build 2 great{{/b}} or {{b}}build 3 city{{/b}} or {{b}}build 1 ship{{/b}}"
 }
 
 func (g *Game) CanBuild(player int) bool {
@@ -83,101 +43,131 @@ func (g *Game) CanBuildShip(player int) bool {
 		b.Goods[GoodWood] > 0 && b.Goods[GoodCloth] > 0
 }
 
-func (g *Game) BuildCity(player, amount int) error {
+func (g *Game) BuildCity(player, amount int) ([]brdgme.Log, error) {
 	if !g.CanBuildBuilding(player) {
-		return errors.New("you can't build at the moment")
+		return nil, errors.New("you can't build at the moment")
 	}
 	if amount < 1 {
-		return errors.New("amount must be a positive number")
+		return nil, errors.New("amount must be a positive number")
 	}
 	if amount > g.RemainingWorkers {
-		return fmt.Errorf("you only have %d workers left", g.RemainingWorkers)
+		return nil, fmt.Errorf("you only have %d workers left", g.RemainingWorkers)
 	}
 	if g.Boards[player].CityProgress+amount > MaxCityProgress {
-		return errors.New("that is more than what remains to be built")
+		return nil, errors.New("that is more than what remains to be built")
 	}
 	initialCities := g.Boards[player].Cities()
 	g.RemainingWorkers -= amount
 	g.Boards[player].CityProgress += amount
-	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		"%s used {{b}}%d{{_b}} workers on {{b}}cities{{_b}}",
-		g.RenderName(player),
-		amount,
-	)))
+	logs := []brdgme.Log{
+		brdgme.NewPublicLog(fmt.Sprintf(
+			"{{player %d}} used {{b}}%d{{/b}} workers on {{b}}cities{{/b}}",
+			player,
+			amount,
+		)),
+	}
 	newCities := g.Boards[player].Cities()
 	if newCities > initialCities {
-		g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-			"%s now has {{b}}%d cities{{_b}}",
-			g.RenderName(player),
+		logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+			"{{player %d}} now has {{b}}%d cities{{/b}}",
+			player,
 			newCities,
 		)))
 	}
 	if !g.CanBuild(player) {
-		g.NextPhase()
+		logs = append(logs, g.NextPhase()...)
 	}
-	return nil
+	return logs, nil
 }
 
-func (g *Game) BuildShip(player, amount int) error {
+func (g *Game) BuildCityCommand(player, amount int, remaining string) (brdgme.CommandResponse, error) {
+	logs, err := g.BuildCity(player, amount)
+	if err != nil {
+		return brdgme.CommandResponse{}, err
+	}
+	return brdgme.CommandResponse{
+		Logs:      logs,
+		CanUndo:   true,
+		Remaining: remaining,
+	}, nil
+}
+
+func (g *Game) BuildShip(player, amount int) ([]brdgme.Log, error) {
 	if !g.CanBuildShip(player) {
-		return errors.New("you can't build a ship at the moment")
+		return nil, errors.New("you can't build a ship at the moment")
 	}
 	if amount < 1 {
-		return errors.New("amount must be a positive number")
+		return nil, errors.New("amount must be a positive number")
 	}
 	if w := g.Boards[player].Goods[GoodWood]; amount > w {
-		return fmt.Errorf("you only have %d wood left", w)
+		return nil, fmt.Errorf("you only have %d wood left", w)
 	}
 	if c := g.Boards[player].Goods[GoodWood]; amount > c {
-		return fmt.Errorf("you only have %d cloth left", c)
+		return nil, fmt.Errorf("you only have %d cloth left", c)
 	}
 	if g.Boards[player].Ships+amount > 5 {
-		return errors.New("you can only have 5 ships")
+		return nil, errors.New("you can only have 5 ships")
 	}
 
 	g.Boards[player].Ships += amount
 	g.Boards[player].Goods[GoodWood] -= amount
 	g.Boards[player].Goods[GoodCloth] -= amount
 
-	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		"%s built {{b}}%d ships{{_b}}",
-		g.RenderName(player),
-		amount,
-	)))
-	if !g.CanBuild(player) {
-		g.NextPhase()
+	logs := []brdgme.Log{
+		brdgme.NewPublicLog(fmt.Sprintf(
+			"%s built {{b}}%d ships{{/b}}",
+			g.RenderName(player),
+			amount,
+		)),
 	}
-	return nil
+	if !g.CanBuild(player) {
+		logs = append(logs, g.NextPhase()...)
+	}
+	return logs, nil
 }
 
-func (g *Game) BuildMonument(player, monument, amount int) error {
+func (g *Game) BuildShipCommand(player, amount int, remaining string) (brdgme.CommandResponse, error) {
+	logs, err := g.BuildShip(player, amount)
+	if err != nil {
+		return brdgme.CommandResponse{}, err
+	}
+	return brdgme.CommandResponse{
+		Logs:      logs,
+		CanUndo:   true,
+		Remaining: remaining,
+	}, nil
+}
+
+func (g *Game) BuildMonument(player, amount int, monument MonumentID) ([]brdgme.Log, error) {
 	if !g.CanBuildBuilding(player) {
-		return errors.New("you can't build at the moment")
+		return nil, errors.New("you can't build at the moment")
 	}
 	if amount < 1 {
-		return errors.New("amount must be a positive number")
+		return nil, errors.New("amount must be a positive number")
 	}
 	if !ContainsInt(monument, Monuments) {
-		return errors.New("that isn't a valid monument")
+		return nil, errors.New("that isn't a valid monument")
 	}
 	if amount > g.RemainingWorkers {
-		return fmt.Errorf("you only have %d workers left", g.RemainingWorkers)
+		return nil, fmt.Errorf("you only have %d workers left", g.RemainingWorkers)
 	}
 	mv := MonumentValues[monument]
 	if g.Boards[player].Monuments[monument]+amount > mv.Size {
-		return errors.New("that is more than what remains to be built")
+		return nil, errors.New("that is more than what remains to be built")
 	}
 	g.RemainingWorkers -= amount
 	g.Boards[player].Monuments[monument] += amount
-	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		"%s used {{b}}%d{{_b}} workers on the {{b}}%s{{_b}}",
-		g.RenderName(player),
-		amount,
-		mv.Name,
-	)))
+	logs := []brdgme.Log{
+		brdgme.NewPublicLog(fmt.Sprintf(
+			"{{player %d}} used {{b}}%d{{/b}} workers on the {{b}}%s{{/b}}",
+			player,
+			amount,
+			mv.Name,
+		)),
+	}
 	if g.Boards[player].Monuments[monument] >= mv.Size {
 		first := true
-		for pNum, _ := range g.Players {
+		for pNum := 0; pNum < g.PlayerCount(); pNum++ {
 			if g.Boards[pNum].MonumentBuiltFirst[monument] {
 				first = false
 				break
@@ -186,15 +176,27 @@ func (g *Game) BuildMonument(player, monument, amount int) error {
 		if first {
 			g.Boards[player].MonumentBuiltFirst[monument] = true
 		}
-		g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-			"%s completed the {{b}}%s{{_b}}",
-			g.RenderName(player),
+		logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+			"{{player %d}} completed the {{b}}%s{{/b}}",
+			player,
 			mv.Name,
 		)))
 		g.CheckGameEndTriggered(player)
 	}
 	if !g.CanBuild(player) {
-		g.NextPhase()
+		logs = append(logs, g.NextPhase()...)
 	}
-	return nil
+	return logs, nil
+}
+
+func (g *Game) BuildMonumentCommand(player, amount int, monument MonumentID, remaining string) (brdgme.CommandResponse, error) {
+	logs, err := g.BuildMonument(player, amount, monument)
+	if err != nil {
+		return brdgme.CommandResponse{}, err
+	}
+	return brdgme.CommandResponse{
+		Logs:      logs,
+		CanUndo:   true,
+		Remaining: remaining,
+	}, nil
 }

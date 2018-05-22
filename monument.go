@@ -1,7 +1,9 @@
 package roll_through_the_ages
 
+type MonumentID = int
+
 const (
-	MonumentStepPyramid = iota
+	MonumentStepPyramid MonumentID = iota
 	MonumentStoneCircle
 	MonumentTemple
 	MonumentObelisk
@@ -18,7 +20,7 @@ type Monument struct {
 	Effect           string
 }
 
-var Monuments = []int{
+var Monuments = []MonumentID{
 	MonumentStepPyramid,
 	MonumentStoneCircle,
 	MonumentTemple,
@@ -28,7 +30,7 @@ var Monuments = []int{
 	MonumentGreatPyramid,
 }
 
-var MonumentValues = map[int]Monument{
+var MonumentValues = map[MonumentID]Monument{
 	MonumentStepPyramid: {
 		Name:   "Step Pyramid",
 		Size:   3,

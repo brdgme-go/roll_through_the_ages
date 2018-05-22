@@ -10,10 +10,6 @@ import (
 	"github.com/Miniand/brdg.me/game/log"
 )
 
-type BuyCommand struct{}
-
-func (c BuyCommand) Name() string { return "buy" }
-
 func (c BuyCommand) Call(
 	player string,
 	context interface{},
@@ -55,7 +51,7 @@ func (c BuyCommand) Call(
 }
 
 func (c BuyCommand) Usage(player string, context interface{}) string {
-	return "{{b}}buy (thing){{_b}} to buy developments, eg. {{b}}buy irrigation{{_b}}.  If you don't have enough coins and need to use goods, list the goods after the development name, eg. {{b}}buy irrigation wood stone{{_b}} or {{b}}buy irrigation all{{_b}} to use all your goods"
+	return "{{b}}buy (thing){{/b}} to buy developments, eg. {{b}}buy irrigation{{/b}}.  If you don't have enough coins and need to use goods, list the goods after the development name, eg. {{b}}buy irrigation wood stone{{/b}} or {{b}}buy irrigation all{{/b}} to use all your goods"
 }
 
 func (g *Game) CanBuy(player int) bool {
@@ -100,7 +96,7 @@ func (g *Game) BuyDevelopment(player, development int, goods []int) error {
 		suffix = fmt.Sprintf(", using %s", strings.Join(suffixParts, ", "))
 	}
 	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		`%s bought the {{b}}%s development{{_b}}%s`,
+		`%s bought the {{b}}%s development{{/b}}%s`,
 		g.RenderName(player),
 		dv.Name,
 		suffix,

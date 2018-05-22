@@ -41,7 +41,7 @@ func (c RollCommand) Call(
 }
 
 func (c RollCommand) Usage(player string, context interface{}) string {
-	return "{{b}}roll # # #{{_b}} to reroll dice, eg. {{b}}roll 1 3 4{{_b}}"
+	return "{{b}}roll # # #{{/b}} to reroll dice, eg. {{b}}roll 1 3 4{{/b}}"
 }
 
 func (g *Game) CanRoll(player int) bool {

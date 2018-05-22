@@ -48,7 +48,7 @@ func (c SwapCommand) Call(
 }
 
 func (c SwapCommand) Usage(player string, context interface{}) string {
-	return "{{b}}swap # (from) (to){{_b}} to swap goods from one type to another, eg. {{b}}swap 2 wood spear{{_b}}"
+	return "{{b}}swap # (from) (to){{/b}} to swap goods from one type to another, eg. {{b}}swap 2 wood spear{{/b}}"
 }
 
 func (g *Game) CanSwap(player int) bool {
@@ -90,7 +90,7 @@ func (g *Game) Swap(player, fromGood, toGood, amount int) error {
 	g.RemainingShips -= amount
 
 	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		`%s swapped {{b}}%d{{_b}} %s for %s`,
+		`%s swapped {{b}}%d{{/b}} %s for %s`,
 		g.RenderName(player),
 		amount,
 		RenderGoodName(fromGood),

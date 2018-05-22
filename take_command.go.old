@@ -51,7 +51,7 @@ func (c TakeCommand) Call(
 
 func (c TakeCommand) Usage(player string, context interface{}) string {
 	return fmt.Sprintf(
-		"{{b}}take # # #{{_b}} to take food or workers, one for each %s dice, eg. for two dice, {{b}}take food workers{{_b}}",
+		"{{b}}take # # #{{/b}} to take food or workers, one for each %s dice, eg. for two dice, {{b}}take food workers{{/b}}",
 		RenderDice(DiceFoodOrWorkers),
 	)
 }

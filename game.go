@@ -7,9 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Miniand/brdg.me/command"
-	"github.com/Miniand/brdg.me/game/helper"
-	"github.com/Miniand/brdg.me/game/log"
+	"github.com/brdgme-go/brdgme"
 )
 
 const (
@@ -28,7 +26,6 @@ const (
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type Game struct {
-	Players          []string
 	CurrentPlayer    int
 	Phase            int
 	Boards           []*PlayerBoard
@@ -40,9 +37,32 @@ type Game struct {
 	RemainingShips   int
 	FinalRound       bool
 	Finished         bool
-	Log              *log.Log
 }
 
+//var _ brdgme.Gamer = &Game{}
+
+func (g *Game) Command(
+	player int,
+	input string,
+	players []string,
+) (brdgme.CommandResponse, error) {
+	panic("not implemented")
+}
+
+func (g *Game) CommandSpec(player int) *brdgme.Spec {
+	parser := g.CommandParser(player)
+	if parser != nil {
+		spec := parser.ToSpec()
+		return &spec
+	}
+	return nil
+}
+
+func (g *Game) PlayerCounts() []int {
+	return []int{2, 3, 4}
+}
+
+/*
 func (g *Game) Commands(player string) []command.Command {
 	commands := []command.Command{}
 	pNum, err := g.PlayerNum(player)
@@ -84,53 +104,36 @@ func (g *Game) Commands(player string) []command.Command {
 	}
 	return commands
 }
+*/
 
-func (g *Game) Name() string {
-	return "Roll Through the Ages"
-}
-
-func (g *Game) Identifier() string {
-	return "roll_through_the_ages"
-}
-
-func (g *Game) Encode() ([]byte, error) {
-	return helper.Encode(g)
-}
-
-func (g *Game) Decode(data []byte) error {
-	return helper.Decode(g, data)
-}
-
-func (g *Game) Start(players []string) error {
-	l := len(players)
-	if l < 2 || l > 4 {
-		return errors.New("Roll Through the Ages is 2-4 player")
+func (g *Game) New(players int) ([]brdgme.Log, error) {
+	if players < 2 || players > 4 {
+		return nil, errors.New("Roll Through the Ages is 2-4 player")
 	}
-	g.Players = players
-	g.Boards = make([]*PlayerBoard, l)
-	for i := 0; i < l; i++ {
+	g.Boards = make([]*PlayerBoard, players)
+	for i := 0; i < players; i++ {
 		g.Boards[i] = NewPlayerBoard()
 	}
-	g.Log = log.New()
 	g.StartTurn()
-	return nil
+	return nil, nil
 }
 
-func (g *Game) PlayerList() []string {
-	return g.Players
+func (g *Game) PlayerCount() int {
+	return len(g.Boards)
 }
 
 func (g *Game) IsFinished() bool {
 	return g.Finished
 }
 
-func (g *Game) Winners() []string {
+func (g *Game) Winners() []int {
 	if !g.IsFinished() {
-		return []string{}
+		return []int{}
 	}
 	winners := []int{}
 	winningScore := 0
-	for p, _ := range g.Players {
+	players := g.PlayerCount()
+	for p := 0; p < players; p++ {
 		score := g.Boards[p].Score()
 		if score > winningScore {
 			winners = []int{}
@@ -141,7 +144,7 @@ func (g *Game) Winners() []string {
 		}
 	}
 	if len(winners) < 2 {
-		return g.PlayerNumsToNames(winners)
+		return winners
 	}
 	// There's a tie, goods value is tie breaker
 	goodsWinners := []int{}
@@ -156,23 +159,11 @@ func (g *Game) Winners() []string {
 			goodsWinners = append(goodsWinners, p)
 		}
 	}
-	return g.PlayerNumsToNames(goodsWinners)
+	return goodsWinners
 }
 
-func (g *Game) PlayerNumsToNames(players []int) []string {
-	names := make([]string, len(players))
-	for i, p := range players {
-		names[i] = g.Players[p]
-	}
-	return names
-}
-
-func (g *Game) WhoseTurn() []string {
-	return []string{g.Players[g.CurrentPlayer]}
-}
-
-func (g *Game) GameLog() *log.Log {
-	return g.Log
+func (g *Game) WhoseTurn() []int {
+	return []int{g.CurrentPlayer}
 }
 
 func (g *Game) StartTurn() {
@@ -181,53 +172,57 @@ func (g *Game) StartTurn() {
 	g.PreservePhase()
 }
 
-func (g *Game) NextPhase() {
+func (g *Game) NextPhase() []brdgme.Log {
 	switch g.Phase {
 	case PhasePreserve:
-		g.RollPhase()
+		return g.RollPhase()
 	case PhaseRoll:
-		g.RollExtraPhase()
+		return g.RollExtraPhase()
 	case PhaseExtraRoll:
-		g.CollectPhase()
+		return g.CollectPhase()
 	case PhaseCollect:
-		g.PhaseResolve()
+		return g.PhaseResolve()
 	case PhaseResolve, PhaseInvade:
-		g.BuildPhase()
+		return g.BuildPhase()
 	case PhaseBuild:
-		g.TradePhase()
+		return g.TradePhase()
 	case PhaseTrade:
-		g.BuyPhase()
+		return g.BuyPhase()
 	case PhaseBuy:
-		g.DiscardPhase()
+		return g.DiscardPhase()
 	case PhaseDiscard:
-		g.NextTurn()
+		return g.NextTurn()
 	}
+	panic("unreachable")
 }
 
-func (g *Game) PreservePhase() {
+func (g *Game) PreservePhase() []brdgme.Log {
 	g.Phase = PhasePreserve
 	if !g.CanPreserve(g.CurrentPlayer) {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) RollPhase() {
+func (g *Game) RollPhase() []brdgme.Log {
 	g.Phase = PhaseRoll
 	g.NewRoll(g.Boards[g.CurrentPlayer].Cities())
 	g.RemainingRolls = 2
+	return []brdgme.Log{}
 }
 
-func (g *Game) RollExtraPhase() {
+func (g *Game) RollExtraPhase() []brdgme.Log {
 	g.Phase = PhaseExtraRoll
 	// Can reroll anything
 	g.RolledDice = append(g.RolledDice, g.KeptDice...)
 	g.KeptDice = []int{}
 	if !g.Boards[g.CurrentPlayer].Developments[DevelopmentLeadership] {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) CollectPhase() {
+func (g *Game) CollectPhase() []brdgme.Log {
 	g.Phase = PhaseCollect
 	g.KeptDice = append(g.RolledDice, g.KeptDice...)
 	g.RolledDice = []int{}
@@ -253,18 +248,20 @@ func (g *Game) CollectPhase() {
 	}
 	g.Boards[cp].GainGoods(goods)
 	if !hasFoodOrWorkersDice {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) PhaseResolve() {
+func (g *Game) PhaseResolve() []brdgme.Log {
 	g.Phase = PhaseResolve
 	cp := g.CurrentPlayer
+	players := g.PlayerCount()
+	logs := []brdgme.Log{}
 	// Check food isn't over maximum
 	if g.Boards[cp].Food > 15 {
-		g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-			`%s had their food reduced from {{b}}%d{{_b}} to the maximum of {{b}}15{{_b}}`,
-			g.RenderName(cp),
+		logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+			`{{player %d}} had their food reduced from {{b}}%d{{/b}} to the maximum of {{b}}15{{/b}}`,
 			g.Boards[cp].Food,
 		)))
 		g.Boards[cp].Food = 15
@@ -272,9 +269,9 @@ func (g *Game) PhaseResolve() {
 	// Feed cities
 	if cities := g.Boards[cp].Cities(); g.Boards[cp].Food >= cities {
 		g.Boards[cp].Food -= cities
-		g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-			`%s fed {{b}}%d{{_b}} cities`,
-			g.RenderName(cp),
+		logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+			`{{player %d}} fed {{b}}%d{{/b}} cities`,
+			cp,
 			cities,
 		)))
 	} else {
@@ -282,9 +279,9 @@ func (g *Game) PhaseResolve() {
 		famine := cities - g.Boards[cp].Food
 		g.Boards[cp].Food = 0
 		g.Boards[cp].Disasters += famine
-		g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-			`Famine! %s takes {{b}}%d disaster points{{_b}}`,
-			g.RenderName(cp),
+		logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+			`Famine! {{player %d}} takes {{b}}%d disaster points{{/b}}`,
+			cp,
 			famine,
 		)))
 	}
@@ -292,7 +289,7 @@ func (g *Game) PhaseResolve() {
 	skulls := 0
 	for _, d := range g.KeptDice {
 		if d == DiceSkull {
-			skulls += 1
+			skulls++
 		}
 	}
 	switch skulls {
@@ -300,78 +297,78 @@ func (g *Game) PhaseResolve() {
 		break
 	case 2:
 		if g.Boards[cp].Developments[DevelopmentIrrigation] {
-			g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-				`%s avoids a drought with their irrigation development`,
-				g.RenderName(cp),
+			logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+				`{{player %s}} avoids a drought with their irrigation development`,
+				cp,
 			)))
 		} else {
 			g.Boards[cp].Disasters += 2
-			g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-				`Drought! %s takes {{b}}2 disaster points{{_b}}`,
-				g.RenderName(cp),
+			logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+				`Drought! {{player %d}} takes {{b}}2 disaster points{{/b}}`,
+				cp,
 			)))
 		}
 	case 3:
 		buf := bytes.NewBufferString("Pestilence!")
-		for p, _ := range g.Players {
+		for p := 0; p < players; p++ {
 			if p == cp {
 				continue
 			}
 			if g.Boards[p].Developments[DevelopmentMedicine] {
 				buf.WriteString(fmt.Sprintf(
-					"\n  %s avoids pestilence with their medicine development",
+					"\n  {{player %d}} avoids pestilence with their medicine development",
 					g.RenderName(p),
 				))
 			} else {
 				g.Boards[p].Disasters += 3
 				buf.WriteString(fmt.Sprintf(
-					"\n  %s takes {{b}}3 disaster points{{_b}}",
-					g.RenderName(p),
+					"\n  {{player %d}} takes {{b}}3 disaster points{{/b}}",
+					p,
 				))
 			}
 		}
-		g.Log.Add(log.NewPublicMessage(buf.String()))
+		logs = append(logs, brdgme.NewPublicLog(buf.String()))
 	case 4:
 		if g.Boards[cp].Developments[DevelopmentSmithing] {
 			buf := bytes.NewBufferString(fmt.Sprintf(
-				"Invasion! %s has the smithing development, so {{b}}all other players are invaded{{_b}}",
-				g.RenderName(cp),
+				"Invasion! {{player %d}} has the smithing development, so {{b}}all other players are invaded{{/b}}",
+				cp,
 			))
-			for p, _ := range g.Players {
+			for p := 0; p < players; p++ {
 				if p == cp {
 					continue
 				}
 				if g.Boards[p].HasBuilt(MonumentGreatWall) {
 					buf.WriteString(fmt.Sprintf(
-						"\n  %s avoids an invasion with their wall",
-						g.RenderName(p),
+						"\n  {{player %d}} avoids an invasion with their wall",
+						p,
 					))
 				} else {
 					g.Boards[p].Disasters += 4
 					buf.WriteString(fmt.Sprintf(
-						"\n  %s takes {{b}}4 disaster points{{_b}}",
-						g.RenderName(p),
+						"\n  {{player %d}} takes {{b}}4 disaster points{{/b}}",
+						p,
 					))
 				}
 			}
-			g.Log.Add(log.NewPublicMessage(buf.String()))
+			logs = append(logs, brdgme.NewPublicLog(buf.String()))
 			g.InvadePhase()
-			return
+			return logs
 		} else if g.Boards[cp].HasBuilt(MonumentGreatWall) {
-			g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-				`%s avoids an invasion with their wall`,
-				g.RenderName(cp),
+			logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+				`{{player %d}} avoids an invasion with their wall`,
+				cp,
 			)))
 		} else {
 			g.Boards[cp].Disasters += 4
-			g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-				`Invasion! %s takes {{b}}4 disaster points{{_b}}`,
-				g.RenderName(cp),
+			logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+				`Invasion! {{player %d}} takes {{b}}4 disaster points{{/b}}`,
+				cp,
 			)))
 		}
 	default:
 		if g.Boards[cp].Developments[DevelopmentReligion] {
-			for p, _ := range g.Players {
+			for p := 0; p < players; p++ {
 				if p == cp {
 					continue
 				}
@@ -379,47 +376,51 @@ func (g *Game) PhaseResolve() {
 					g.Boards[p].Goods[good] = 0
 				}
 			}
-			g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-				`Revolt! %s has the religion development, so {{b}}all other players{{_b}} lose {{b}}all of their goods{{_b}}`,
-				g.RenderName(cp),
+			logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+				`Revolt! {{player %d}} has the religion development, so {{b}}all other players{{/b}} lose {{b}}all of their goods{{/b}}`,
+				cp,
 			)))
 		} else {
 			for _, good := range Goods {
 				g.Boards[cp].Goods[good] = 0
 			}
-			g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-				`Revolt! %s loses {{b}}all of their goods{{_b}}`,
-				g.RenderName(cp),
+			logs = append(logs, brdgme.NewPublicLog(fmt.Sprintf(
+				`Revolt! {{player %d}} loses {{b}}all of their goods{{/b}}`,
+				cp,
 			)))
 		}
 	}
-	g.NextPhase()
+	logs = append(logs, g.NextPhase()...)
+	return logs
 }
 
-func (g *Game) InvadePhase() {
+func (g *Game) InvadePhase() []brdgme.Log {
 	g.Phase = PhaseInvade
 	if !g.CanInvade(g.CurrentPlayer) {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) BuildPhase() {
+func (g *Game) BuildPhase() []brdgme.Log {
 	g.Phase = PhaseBuild
 	if !g.CanBuild(g.CurrentPlayer) {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) TradePhase() {
+func (g *Game) TradePhase() []brdgme.Log {
 	g.Phase = PhaseTrade
 	g.RemainingShips = g.Boards[g.CurrentPlayer].Ships
 	if g.Boards[g.CurrentPlayer].Ships == 0 ||
 		g.Boards[g.CurrentPlayer].GoodsNum() == 0 {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) BuyPhase() {
+func (g *Game) BuyPhase() []brdgme.Log {
 	g.Phase = PhaseBuy
 	b := g.Boards[g.CurrentPlayer]
 	buyingPower := g.RemainingCoins + b.GoodsValue()
@@ -427,35 +428,29 @@ func (g *Game) BuyPhase() {
 		buyingPower += b.Food * 6
 	}
 	if buyingPower < 10 {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) DiscardPhase() {
+func (g *Game) DiscardPhase() []brdgme.Log {
 	g.Phase = PhaseDiscard
 	if g.Boards[g.CurrentPlayer].GoodsNum() <= 6 ||
 		g.Boards[g.CurrentPlayer].Developments[DevelopmentCaravans] {
-		g.NextPhase()
+		return g.NextPhase()
 	}
+	return []brdgme.Log{}
 }
 
-func (g *Game) NextTurn() {
-	g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
+func (g *Game) NextTurn() []brdgme.Log {
+	g.CurrentPlayer = (g.CurrentPlayer + 1) % g.PlayerCount()
 	if g.CurrentPlayer == 0 && g.FinalRound {
 		g.Finished = true
 	}
 	if !g.IsFinished() {
 		g.StartTurn()
 	}
-}
-
-func (g *Game) PlayerNum(player string) (int, error) {
-	for pNum, p := range g.Players {
-		if player == p {
-			return pNum, nil
-		}
-	}
-	return 0, fmt.Errorf("could not find a player by the name %s", player)
+	return []brdgme.Log{}
 }
 
 func (g *Game) CheckGameEndTriggered(player int) {
@@ -485,10 +480,21 @@ func (g *Game) CheckGameEndTriggered(player int) {
 	g.TriggerGameEnd()
 }
 
-func (g *Game) TriggerGameEnd() {
+func (g *Game) TriggerGameEnd() []brdgme.Log {
 	g.FinalRound = true
-	g.Log.Add(log.NewPublicMessage(
-		"{{b}}Game end has been triggered, the game will be finished after the last player has their turn{{_b}}"))
+	return []brdgme.Log{brdgme.NewPublicLog(
+		"{{b}}Game end has been triggered, the game will be finished after the last player has their turn{{/b}}",
+	)}
+}
+
+func (g *Game) AvailableMonuments(player int) []MonumentID {
+	available := []MonumentID{}
+	for _, m := range Monuments {
+		if g.Boards[player].Monuments[m] < MonumentValues[m].Size {
+			available = append(available, m)
+		}
+	}
+	return available
 }
 
 func ContainsInt(needle int, haystack []int) bool {

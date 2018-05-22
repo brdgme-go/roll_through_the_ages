@@ -27,7 +27,7 @@ func (c PreserveCommand) Call(
 }
 
 func (c PreserveCommand) Usage(player string, context interface{}) string {
-	return "{{b}}preserve{{_b}} to use 1 pottery to double your food"
+	return "{{b}}preserve{{/b}} to use 1 pottery to double your food"
 }
 
 func (g *Game) CanPreserve(player int) bool {
@@ -46,7 +46,7 @@ func (g *Game) Preserve(player int) error {
 	g.Boards[player].Goods[GoodPottery] -= 1
 
 	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		`%s used {{b}}preservation{{_b}} to double their food to {{b}}%d{{_b}} for {{b}}1 pottery{{_b}}`,
+		`%s used {{b}}preservation{{/b}} to double their food to {{b}}%d{{/b}} for {{b}}1 pottery{{/b}}`,
 		g.RenderName(player),
 		g.Boards[player].Food,
 	)))

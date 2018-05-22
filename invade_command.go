@@ -38,7 +38,7 @@ func (c InvadeCommand) Call(
 }
 
 func (c InvadeCommand) Usage(player string, context interface{}) string {
-	return "{{b}}invade #{{_b}} to use spearheads to inflict extra damage on other players, eg. {{b}}invade 2{{_b}}"
+	return "{{b}}invade #{{/b}} to use spearheads to inflict extra damage on other players, eg. {{b}}invade 2{{/b}}"
 }
 
 func (g *Game) CanInvade(player int) bool {
@@ -61,7 +61,7 @@ func (g *Game) Invade(player, amount int) error {
 
 	g.Boards[player].Goods[GoodSpearhead] -= amount
 	buf := bytes.NewBufferString(fmt.Sprintf(
-		`%s used {{b}}%d{{_b}} spearheads to cause extra damage`,
+		`%s used {{b}}%d{{/b}} spearheads to cause extra damage`,
 		g.RenderName(player),
 		amount,
 	))
@@ -77,7 +77,7 @@ func (g *Game) Invade(player, amount int) error {
 		} else {
 			g.Boards[p].Disasters += amount
 			buf.WriteString(fmt.Sprintf(
-				"\n  %s takes {{b}}%d disaster points{{_b}}",
+				"\n  %s takes {{b}}%d disaster points{{/b}}",
 				g.RenderName(p),
 				amount,
 			))

@@ -37,7 +37,7 @@ func (c SellCommand) Call(
 }
 
 func (c SellCommand) Usage(player string, context interface{}) string {
-	return "{{b}}sell #{{_b}} to sell food for 6 coins each, eg. {{b}}sell 3{{_b}}"
+	return "{{b}}sell #{{/b}} to sell food for 6 coins each, eg. {{b}}sell 3{{/b}}"
 }
 
 func (g *Game) CanSell(player int) bool {
@@ -57,7 +57,7 @@ func (g *Game) SellFood(player, amount int) error {
 	g.RemainingCoins += coins
 	g.Boards[player].Food -= amount
 	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		`%s traded {{b}}%d{{_b}} %s for {{b}}%d coins{{_b}}`,
+		`%s traded {{b}}%d{{/b}} %s for {{b}}%d coins{{/b}}`,
 		g.RenderName(player),
 		amount,
 		FoodName,

@@ -3,41 +3,24 @@ package roll_through_the_ages
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
-	"github.com/Miniand/brdg.me/command"
-	"github.com/Miniand/brdg.me/game/log"
+	"github.com/brdgme-go/brdgme"
 )
 
-type TradeCommand struct{}
-
-func (c TradeCommand) Name() string { return "trade" }
-
-func (c TradeCommand) Call(
-	player string,
-	context interface{},
-	input *command.Reader,
-) (string, error) {
-	g := context.(*Game)
-	pNum, err := g.PlayerNum(player)
+func (g *Game) TradeCommand(
+	player int,
+	args TradeCommand,
+	remaining string,
+) (brdgme.CommandResponse, error) {
+	logs, err := g.TradeCommand(player, amount)
 	if err != nil {
-		return "", err
+		return brdgme.CommandResponse{}, err
 	}
-
-	args, err := input.ReadLineArgs()
-	if err != nil || len(args) == 0 {
-		return "", errors.New("you must specify how much stone to trade")
+	return brdgme.CommandResponse{
+		Logs:      logs,
+		CanUndo:   true,
+		Remaining: remaining,
 	}
-	amount, err := strconv.Atoi(args[0])
-	if err != nil || amount < 1 {
-		return "", errors.New("the amount must be a positive number")
-	}
-
-	return "", g.TradeStone(pNum, amount)
-}
-
-func (c TradeCommand) Usage(player string, context interface{}) string {
-	return "{{b}}trade #{{_b}} to trade stone for 3 workers each, eg. {{b}}trade 3{{_b}}"
 }
 
 func (g *Game) CanTrade(player int) bool {
@@ -46,23 +29,24 @@ func (g *Game) CanTrade(player int) bool {
 		g.Boards[player].Goods[GoodStone] > 0
 }
 
-func (g *Game) TradeStone(player, amount int) error {
+func (g *Game) TradeStone(player, amount int) ([]brdgme.Log, error) {
 	if !g.CanTrade(player) {
-		return errors.New("you can't trade at the moment")
+		return nil, errors.New("you can't trade at the moment")
 	}
 	if stone := g.Boards[player].Goods[GoodStone]; amount > stone {
-		return fmt.Errorf("you only have %d stone", stone)
+		return nil, fmt.Errorf("you only have %d stone", stone)
 	}
 
 	workers := amount * 3
 	g.RemainingWorkers += workers
 	g.Boards[player].Goods[GoodStone] -= amount
-	g.Log.Add(log.NewPublicMessage(fmt.Sprintf(
-		`%s traded {{b}}%d{{_b}} %s for {{b}}%d workers{{_b}}`,
-		g.RenderName(player),
-		amount,
-		RenderGoodName(GoodStone),
-		workers,
-	)))
-	return nil
+	return []brdgme.Log{
+		brdgme.NewPublicLog(fmt.Sprintf(
+			`{{player %d}} traded {{b}}%d{{/b}} %s for {{b}}%d workers{{/b}}`,
+			player,
+			amount,
+			RenderGoodName(GoodStone),
+			workers,
+		)),
+	}, nil
 }
