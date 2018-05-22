@@ -273,7 +273,7 @@ func RenderDice(dice int) string {
 	return diceString
 }
 
-func RenderGoodName(good int) string {
+func RenderGoodName(good Good) string {
 	return fmt.Sprintf(
 		`{{b}}{{c "%s"}}%s{{/c}}{{/b}}`,
 		GoodColours[good],

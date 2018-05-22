@@ -453,15 +453,14 @@ func (g *Game) NextTurn() []brdgme.Log {
 	return []brdgme.Log{}
 }
 
-func (g *Game) CheckGameEndTriggered(player int) {
+func (g *Game) CheckGameEndTriggered(player int) []brdgme.Log {
 	if g.FinalRound {
 		// End game already triggered
-		return
+		return nil
 	}
 	// 5th development built
 	if len(g.Boards[player].Developments) >= 7 {
-		g.TriggerGameEnd()
-		return
+		return g.TriggerGameEnd()
 	}
 	// Every monument built
 	for _, m := range Monuments {
@@ -473,11 +472,11 @@ func (g *Game) CheckGameEndTriggered(player int) {
 			}
 		}
 		if !built {
-			return
+			return nil
 		}
 	}
 	// All were built
-	g.TriggerGameEnd()
+	return g.TriggerGameEnd()
 }
 
 func (g *Game) TriggerGameEnd() []brdgme.Log {

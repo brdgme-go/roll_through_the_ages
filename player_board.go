@@ -10,22 +10,22 @@ var MaxCityProgress = CityLevels[len(CityLevels)-1]
 
 type PlayerBoard struct {
 	CityProgress       int
-	Developments       map[int]bool
-	Monuments          map[int]int
-	MonumentBuiltFirst map[int]bool
+	Developments       map[DevelopmentID]bool
+	Monuments          map[MonumentID]int
+	MonumentBuiltFirst map[MonumentID]bool
 	Food               int
-	Goods              map[int]int
+	Goods              map[Good]int
 	Disasters          int
 	Ships              int
 }
 
 func NewPlayerBoard() *PlayerBoard {
 	return &PlayerBoard{
-		Developments:       map[int]bool{},
-		Monuments:          map[int]int{},
-		MonumentBuiltFirst: map[int]bool{},
+		Developments:       map[DevelopmentID]bool{},
+		Monuments:          map[MonumentID]int{},
+		MonumentBuiltFirst: map[MonumentID]bool{},
 		Food:               3,
-		Goods:              map[int]int{},
+		Goods:              map[Good]int{},
 	}
 }
 
@@ -104,7 +104,7 @@ func (b *PlayerBoard) GainGoods(n int) {
 	}
 }
 
-func (b *PlayerBoard) GainGood(good int) {
+func (b *PlayerBoard) GainGood(good Good) {
 	max := GoodMaximum(good)
 	if b.Goods[good] < max {
 		b.Goods[good] += 1
@@ -132,6 +132,6 @@ func (b *PlayerBoard) GoodsValue() int {
 	return val
 }
 
-func (b *PlayerBoard) HasBuilt(monument int) bool {
+func (b *PlayerBoard) HasBuilt(monument MonumentID) bool {
 	return b.Monuments[monument] >= MonumentValues[monument].Size
 }

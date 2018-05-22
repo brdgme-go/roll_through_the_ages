@@ -20,10 +20,23 @@ type BuildCommandTarget struct {
 	Monument MonumentID
 }
 
+type BuyCommand struct {
+	Development DevelopmentID
+	AllGoods    bool
+	Goods       []Good
+}
+
+type TradeCommand struct {
+	Amount int
+}
+
 func (g *Game) CommandParser(player int) brdgme.Parser {
 	parsers := []brdgme.Parser{}
 	if g.CanBuild(player) {
 		parsers = append(parsers, g.BuildParser(player))
+	}
+	if g.CanBuy(player) {
+		parsers = append(parsers, g.BuyParser(player))
 	}
 	if g.CanTrade(player) {
 		parsers = append(parsers, g.TradeParser(player))
@@ -146,10 +159,6 @@ func (g *Game) BuildTargetMonumentParser(player int) brdgme.Parser {
 			}
 		},
 	}
-}
-
-type TradeCommand struct {
-	Amount int
 }
 
 func (g *Game) TradeParser(player int) brdgme.Parser {

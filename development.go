@@ -7,8 +7,10 @@ type Development struct {
 	Points int
 }
 
+type DevelopmentID int
+
 const (
-	DevelopmentLeadership = iota
+	DevelopmentLeadership DevelopmentID = iota
 	DevelopmentIrrigation
 	DevelopmentAgriculture
 	DevelopmentQuarrying
@@ -27,7 +29,7 @@ const (
 	DevelopmentEmpire
 )
 
-var Developments = []int{
+var Developments = []DevelopmentID{
 	DevelopmentLeadership,
 	DevelopmentIrrigation,
 	DevelopmentAgriculture,
@@ -47,7 +49,7 @@ var Developments = []int{
 	DevelopmentEmpire,
 }
 
-var DevelopmentValues = map[int]Development{
+var DevelopmentValues = map[DevelopmentID]Development{
 	DevelopmentLeadership: {
 		Name:   "leadership",
 		Effect: "reroll 1 die (after last roll)",
@@ -152,8 +154,8 @@ var DevelopmentValues = map[int]Development{
 	},
 }
 
-func DevelopmentNameMap() map[int]string {
-	m := map[int]string{}
+func DevelopmentNameMap() map[DevelopmentID]string {
+	m := map[DevelopmentID]string{}
 	for _, d := range Developments {
 		m[d] = DevelopmentValues[d].Name
 	}

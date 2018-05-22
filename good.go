@@ -1,14 +1,16 @@
 package roll_through_the_ages
 
+type Good int
+
 const (
-	GoodWood = iota
+	GoodWood Good = iota
 	GoodStone
 	GoodPottery
 	GoodCloth
 	GoodSpearhead
 )
 
-var Goods = []int{
+var Goods = []Good{
 	GoodWood,
 	GoodStone,
 	GoodPottery,
@@ -16,7 +18,7 @@ var Goods = []int{
 	GoodSpearhead,
 }
 
-var GoodStrings = map[int]string{
+var GoodStrings = map[Good]string{
 	GoodWood:      "wood",
 	GoodStone:     "stone",
 	GoodPottery:   "pottery",
@@ -24,7 +26,7 @@ var GoodStrings = map[int]string{
 	GoodSpearhead: "spearhead",
 }
 
-var GoodColours = map[int]string{
+var GoodColours = map[Good]string{
 	GoodWood:      "magenta",
 	GoodStone:     "gray",
 	GoodPottery:   "red",
@@ -32,19 +34,19 @@ var GoodColours = map[int]string{
 	GoodSpearhead: "yellow",
 }
 
-func GoodsReversed() []int {
+func GoodsReversed() []Good {
 	l := len(Goods)
-	rev := make([]int, l)
+	rev := make([]Good, l)
 	for i, _ := range Goods {
 		rev[i] = l - i - 1
 	}
 	return rev
 }
 
-func GoodMaximum(good int) int {
+func GoodMaximum(good Good) int {
 	return 8 - good
 }
 
-func GoodValue(good, n int) int {
+func GoodValue(good Good, n int) int {
 	return (n * (n + 1) / 2) * (good + 1)
 }
